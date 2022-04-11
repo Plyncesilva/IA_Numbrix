@@ -7,8 +7,8 @@
 # 00000 Nome2
 
 import sys
+
 from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_tree_search, greedy_search, recursive_best_first_search
-import numpy as np
 
 class NumbrixState:
     state_id = 0
@@ -27,26 +27,42 @@ class NumbrixState:
 class Board:
     """ Representação interna de um tabuleiro de Numbrix. """
 
-    def __init__(self, size: int, display: np.array) -> None:
+    def __init__(self, size: int, display: list) -> None:
         self.size = size
         self.display = display
 
+    def set_number(self, row: int, col: int, num: int) -> None:
+        self.display[row][col] = num
+
+    def get_board(self) -> list:
+        return self.display
+    
+    def get_size(self) -> int:
+        return self.size
+    
     def get_number(self, row: int, col: int) -> int:
         """ Devolve o valor na respetiva posição do tabuleiro. """
-        # TODO
-        pass
+        return self.display[row][col]      
     
     def adjacent_vertical_numbers(self, row: int, col: int) -> (int, int):
         """ Devolve os valores imediatamente abaixo e acima, 
         respectivamente. """
-        # TODO
-        pass
-    
+        if row == 0:
+            return [self.get_number(row+1, col), None]
+        elif row == self.get_size()-1:
+            return [None, self.get_number(row-1, col)]
+        else:
+            return [self.get_number(row+1, col), self.get_number(row-1, col)]
+            
     def adjacent_horizontal_numbers(self, row: int, col: int) -> (int, int):
         """ Devolve os valores imediatamente à esquerda e à direita, 
         respectivamente. """
-        # TODO
-        pass
+        if col == 0:
+            return [None, self.get_number(row, col+1)]
+        elif col == self.get_size()-1:
+            return [self.get_number(row, col-1), None]
+        else:
+            return [self.get_number(row, col-1), self.get_number(row, col+1)]
     
     @staticmethod    
     def parse_instance(filename: str):
@@ -54,20 +70,18 @@ class Board:
         uma instância da classe Board. """
         fp = open(filename, "r")
         size =  int(fp.readline())
-        display = []
+        raw_display = []
 
         for text_line in fp.readlines():
             line = []
             elements = text_line.split("\t")
             for index in range(size):
                 line += [int(elements[index])]
-            display += [line]
-
-        display = np.array(display, dtype=int)
+            raw_display += [line]
 
         fp.close()
 
-        return Board(size, display) 
+        return Board(size, raw_display) 
 
     # TODO: outros metodos da classe
     def __str__(self) -> str:
@@ -117,7 +131,12 @@ if __name__ == "__main__":
     # TODO:
     # Ler o ficheiro de input de sys.argv[1],
     board = Board.parse_instance(sys.argv[1])
+    print(board)
+    
     # Usar uma técnica de procura para resolver a instância,
+    
     # Retirar a solução a partir do nó resultante,
+    
     # Imprimir para o standard output no formato indicado.
+    
     pass
