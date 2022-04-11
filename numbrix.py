@@ -67,18 +67,15 @@ class Board:
 
         fp.close()
 
-        print(display)
-
         return Board(size, display) 
 
     # TODO: outros metodos da classe
     def __str__(self) -> str:
         res = ""
         for line in self.display:
-            for element in range(len(line)):
+            for element in line:
                 res += str(element) + "\t"
             res += "\n"
-            print(res)
         return res
 
 class Numbrix(Problem):
@@ -120,7 +117,6 @@ if __name__ == "__main__":
     # TODO:
     # Ler o ficheiro de input de sys.argv[1],
     board = Board.parse_instance(sys.argv[1])
-    print(board)
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
