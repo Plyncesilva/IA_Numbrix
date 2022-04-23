@@ -48,7 +48,7 @@ class Board:
     
     def get_number(self, row: int, col: int) -> int:
         """ Devolve o valor na respetiva posição do tabuleiro. """
-        return self.board[row][col]      
+        return self.board[row][col]       
     
     def adjacent_vertical_numbers(self, row: int, col: int) -> (int, int):
         """ Devolve os valores imediatamente abaixo e acima, 
@@ -84,6 +84,12 @@ class Board:
         filled = self.get_filled_positions()
         return sorted(filled, key=lambda n: n[-1])
     
+    def number_exists(self, num: int) -> bool:
+        for row in self.get_board():
+            if num in row:
+                return True
+        return False
+
     @staticmethod    
     def parse_instance(filename: str):
         """ Lê o ficheiro cujo caminho é passado como argumento e retorna
@@ -121,7 +127,19 @@ class Numbrix(Problem):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. Uma acao e representada
         por (row, col, num)"""
-        
+        def get_possible_actions_for_n(board, pos):
+            row = pos[0]
+            col = pos[1]
+            num = pos[2]
+            
+            if num == 1 or num == board.get_size()**2:
+                pass
+            else:
+                pass 
+
+        board = state.get_board()
+
+        filled_positions = board.get_filled_positions()
         pass
 
     def result(self, state: NumbrixState, action):
