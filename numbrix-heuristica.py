@@ -16,8 +16,7 @@ class Board:
     def __init__(self, size: int, board: list=[]) -> None:
         self.size = size
         self.family = []
-        self.remaining = list(range(1, size**2 +1))
-        self.map = {}
+
         if board == []:
             for i in range(self.size):
                 aux = []
@@ -29,9 +28,6 @@ class Board:
                 for col in range(self.size):
                     if board[row][col] != 0:
                         self.family += [board[row][col]]
-                        self.remaining.remove(board[row][col])
-
-        
 
         self.board = board
 
@@ -48,7 +44,6 @@ class Board:
         if self.board[row][col] == 0:
             self.family += [num]
         self.board[row][col] = num
-        self.remaining.remove(num)
 
     def get_board(self) -> list:
         return self.board
@@ -225,20 +220,6 @@ class Board:
     def on_wall(self, row: int, col: int):
         return None in self.get_neighbors(row, col)
 
-    
-    def manhattanDistance(self, pos1, pos2):
-        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
-
-    def possible_from_manhattan(self, row, col, num):
-        for i in range(self.size):
-            for j in range(self.size):
-                if self.get_number(i, j) != 0:
-                    if self.manhattanDistance((row, col), (i, j)) <= abs(self.get_number(i, j) - num):
-                        continue
-                    else:
-                        return False
-        return True
-
     def all_neighbours_satisfied(self, row: int, col: int):
         return self.position_satisified(row-1, col, self.get_number(row-1, col)) \
             and self.position_satisified(row+1, col, self.get_number(row+1, col))\
@@ -264,6 +245,8 @@ class Board:
         return False
 
     def get_coordinates(self, num: int):
+        if num == 28:
+            print("welllllll", self.board)
         for row in range(self.size):
             for col in range(self.size):
                 if self.board[row][col] == num:
@@ -388,6 +371,7 @@ class Board:
             for col in range(self.get_size()):
                 if self.get_number(row, col) == 0 and self.trapped_position(row, col) and not self.position_satisified(row, col, self.get_number(row, col)):
                     if not self.position_satisified(row, col, 1) and not self.position_satisified(row, col, self.size**2):
+                        print("!!! UNSOLVABLE BOARD !!!", row, col)
                         return True
         return False
 
@@ -483,71 +467,44 @@ class Numbrix(Problem):
         size = board.get_size()
         EOL = [1, size**2]
 
-
-        for num in board.remaining:
-            # both goals exist
-            if board.number_exists(num-1) and board.number_exists(num+1): 
-                lower = board.get_coordinates(num-1)
-                upper = board.get_coordinates(num+1)
-                # same row
-                if lower[0] == upper[0] and abs(lower[1]-upper[1]) == 2:
-                    # empty position to put number
-                    if board.get_number(lower[0], min(lower[1], upper[1]) + 1) == 0:
-                        return [(lower[0], min(lower[1], upper[1]) + 1, num)]
-                    return []
-                # same column
-                elif lower[1] == upper[1] and abs(lower[0] - upper[0]) == 2:
-                    # empty position to put number
-                    if board.get_number(min(lower[0], upper[0])+1, lower[1]) == 0:
-                        return [(min(lower[0], upper[0]) +1, lower[1], num)]
-                    return []
-                # diagonals
-                else:
-                    d1 = (lower[0], upper[1])
-                    d2 = (upper[0], lower[1])
-                    # lower is above upper
-                    if board.get_number(d1[0], d1[1]) != 0:
-                        if board.get_number(d2[0], d2[1]) == 0:
-                            return [(d2[0], d2[1], num)]
-                        return []
-                    # upper is above lower
-                    elif board.get_number(d2[0], d2[1]) != 0:
-                        if board.get_number(d1[0], d1[1]) == 0:
-                            return [(d1[0], d1[1], num)]
-                        return []
-                    else:
-                        # check using manhattan distance and empty spots
-                        if board.get_number(d1[0], d1[1]) == 0 and board.possible_from_manhattan(d1[0], d1[1], num):
-                            actions += [(d1[0], d1[1], num)]
-                        if board.get_number(d2[0], d2[1]) == 0 and board.possible_from_manhattan(d2[0], d2[1], num):
-                            actions += [(d2[0], d2[1], num)]
-                        if actions != []:
-                            return actions
-                        return []
-            # only lower goal exists
-            elif board.number_exists(num-1):
-                lower = board.get_coordinates(num-1)
-                neighbours = board.get_neighbors(lower[0], lower[1])
-                positions = ((lower[0], lower[1]-1), (lower[0], lower[1]+1), (lower[0]+1, lower[1]), (lower[0]-1, lower[1]))
-            # only upper goal exists
-            elif board.number_exists(num+1):
-                upper = board.get_coordinates(num+1)
-                neighbours = board.get_neighbors(upper[0], upper[1])
-                positions = ((upper[0], upper[1]-1), (upper[0], upper[1]+1), (upper[0]+1, upper[1]), (upper[0]-1, upper[1]))
-            # no goals
-            elif not board.number_exists(num-1) and not board.number_exists(num+1):
-                continue
-            
-            for i in range(len(neighbours)):
-                if neighbours[i] == 0:
-                    updated_neighbours = board.get_neighbors(positions[i][0], positions[i][1])
-
-                    # check for space
-                    if updated_neighbours.count(0) > 0 or num == 1 or num == size**2:
-                        # check manhattan distance
-                        if board.get_number(positions[i][0], positions[i][1]) == 0 and board.possible_from_manhattan(positions[i][0], positions[i][1], num):
-                            actions += [(positions[i][0], positions[i][1], num)]
-            return actions
+        for row in range(size):
+            for col in range(size):
+                curr = board.get_number(row, col)
+                # not interested in zeros
+                if curr == 0:
+                    continue
+                # [left, right, down, up]
+                neigbours = board.get_neighbors(row, col)
+                if curr not in EOL:
+                    if curr + 1 not in neigbours and curr-1 not in neigbours:
+                        available = board.get_blank_neighbors(row, col)
+                        for pos in available:
+                            actions += [(pos[0], pos[1], curr+1), (pos[0], pos[1], curr-1)]
+                        # acrescentar action nos espacos brancos
+                    elif curr + 1 not in neigbours:
+                        available = board.get_blank_neighbors(row, col)
+                        for pos in available:
+                            actions += [(pos[0], pos[1], curr+1)]                        
+                    elif curr - 1 not in neigbours:
+                        available = board.get_blank_neighbors(row, col)
+                        for pos in available:
+                            actions += [(pos[0], pos[1], curr-1)]
+                        # acrescentar action nos espacos brancos
+                elif curr == 1:
+                    if 2 not in neigbours:
+                        available = board.get_blank_neighbors(row, col)
+                        for pos in available:
+                            actions += [(pos[0], pos[1], 2)]
+                        # acrescentar actions nos espacos brancos
+                elif curr == size**2:
+                    if curr-1 not in neigbours:
+                        available = board.get_blank_neighbors(row, col)
+                        for pos in available:
+                            actions += [(pos[0], pos[1], curr-1)]
+                        # acrescentar action nos espacos brancos
+        print(board)
+        print("> Global Heuristic is ", state.h)
+        print("> Actions are ", actions)
         return actions
 
     def result(self, state: NumbrixState, action):
@@ -613,26 +570,153 @@ class Numbrix(Problem):
         """ Função heuristica utilizada para a procura A*. 
             Procura maior caminho de numeros consecutivos.
         """
+        if node.action == None:
+            return 0
         board: Board = node.state.board
+        h = node.state.h
         size = board.get_size()
-        res = 0
+        EOL = [1, size**2]
+        action = node.action
+        row = action[0]
+        col = action[1]
+        num = action[2]
+        neighbours = board.get_neighbors(row, col)
+        # REWARDS
+        SEQUENCE = 100
+        HALF_SEQUENCE = 5
+        HALF_SEQUENCE_WITH_SINGLE_PATH = 50
+        CORNER = 50
+        RIGHT_PLACE_RIGHT_TIME = 50 
+        IN_RANGE = 50
+        # PENALTIES
+        FAR_FROM_SUCCESSOR = -1000 # impossible move
+        TRAPPED = -1000 # impossible move
+        NOT_CLOSE = -20 # getting closer to bad neighbourhoods
+        ALREADY_PRESENT = -1000 # impossible
+        BLOCKED_NEIGHBOUR = -1000 # impossible
+        PATH_CLOSER = -50
 
-        for row in range(size):
-            for col in range(size):
-                neighbours = board.get_neighbors(row, col)
-                curr = board.get_number(row, col)
-                if curr == 1:
-                    if 2 not in neighbours:
-                        res += 3
-                elif curr == size**2:
-                    if curr-1 not in neighbours:
-                        res += 3
-                elif curr-1 not in neighbours and curr+1 not in neighbours:
-                    res += 10
-                elif curr-1 not in neighbours or curr+1 not in neighbours:
-                    res += 2
-        return res
+        debug = False
 
+        if neighbours.count(None) == 2:
+            if debug:
+                print("CORNER +", CORNER)
+            h -= CORNER
+
+        if neighbours.count(None) == 1 and neighbours[0] == 0 and neighbours[1] == 0:
+            if debug:
+                print("PATH CLOSER +", PATH_CLOSER)
+            h -= PATH_CLOSER
+
+        if num not in EOL:
+            # Sequence formed!
+            if num-1 in neighbours and num+1 in neighbours:
+                if debug:
+                    print("SEQUENCE +", SEQUENCE)
+                h -= SEQUENCE 
+            # Only half sequence formed, standard case
+            elif num-1 in neighbours or num+1 in neighbours:
+                if 0 in neighbours:
+                    if debug:
+                        print("HALF SEQUENCE +", HALF_SEQUENCE)
+                    h -= HALF_SEQUENCE
+                else:
+                    if debug:    
+                        print("TRAPPED +", TRAPPED)
+                    h -= TRAPPED # impssible
+                    return h
+                if neighbours.count(0) == 1:
+                    if debug:    
+                        print("HALF_SEQUENCE_WITH_SINGLE_PATH +", HALF_SEQUENCE_WITH_SINGLE_PATH)
+                    h -= HALF_SEQUENCE_WITH_SINGLE_PATH
+                if self.neighbours_far(num, neighbours):
+                    if debug:    
+                        print("NOT_CLOSE +", NOT_CLOSE)
+                    h -= NOT_CLOSE
+            # check distances
+            if num-1 in neighbours:
+                upper_successor = board.get_min_above(num)
+                dist = minDistance(board.get_board(), row, col, upper_successor)
+                if debug:    
+                    print("Calculated distance is ", dist)
+                if dist == -1:
+                    if debug:    
+                        print("FAR_FROM_SUCCESSOR +", FAR_FROM_SUCCESSOR)
+                    h -= FAR_FROM_SUCCESSOR # impossible
+                    return h
+                elif abs(num-upper_successor) >= dist and dist != 0:
+                    if debug:    
+                        print("IN_RANGE +", IN_RANGE)
+                    h -= IN_RANGE
+                    #if abs(num-upper_successor) == dist:
+                    #    if debug:    
+                    #        print("RIGHT_PLACE_RIGHT_TIME +", RIGHT_PLACE_RIGHT_TIME)
+                    #    h -= RIGHT_PLACE_RIGHT_TIME
+                elif dist == 0:
+                    if debug:    
+                        print("IN_RANGE +", IN_RANGE)
+                    h -= IN_RANGE
+                else:
+                    if debug:    
+                        print("FAR_FROM_SUCCESSOR +", FAR_FROM_SUCCESSOR)
+                    h -= FAR_FROM_SUCCESSOR # impossible
+                    return h
+                
+            if num+1 in neighbours:
+                lower_successor = board.get_max_below(num)
+                dist = minDistance(board.get_board(), row, col, lower_successor)
+                if debug:    
+                    print("Calculated distance is ", dist)
+                if dist == -1:
+                    if debug:    
+                        print("FAR_FROM_SUCCESSOR +", FAR_FROM_SUCCESSOR)
+                    h -= FAR_FROM_SUCCESSOR # impossible
+                    return h
+                elif abs(num-lower_successor) >= dist and dist != 0:
+                    if debug:    
+                        print("IN_RANGE +", IN_RANGE)
+                    h -= IN_RANGE
+                    #if abs(num-lower_successor) == dist:
+                    #    if debug:    
+                    #        print("RIGHT_PLACE_RIGHT_TIME +", RIGHT_PLACE_RIGHT_TIME)
+                    #    h -= RIGHT_PLACE_RIGHT_TIME
+                else:
+                    if debug:    
+                        print("FAR_FROM_SUCCESSOR +", FAR_FROM_SUCCESSOR)
+                    h -= FAR_FROM_SUCCESSOR # impossible
+                    return h
+
+        else:
+            if num == 1:
+                # Only possible sequence formed!
+                if num+1 in neighbours and 0 not in neighbours:
+                    if debug:    
+                        print("SEQUENCE +", SEQUENCE)
+                    h -= SEQUENCE
+                # Only half sequence formed, standard case
+                elif num+1 in neighbours:
+                    if debug:    
+                        print("HALF SEQUENCE +", HALF_SEQUENCE)
+                    h -= HALF_SEQUENCE
+            # num = max
+            else:
+                if num-1 in neighbours and 0 not in neighbours:
+                    if debug:    
+                        print("SEQUENCE +", SEQUENCE)
+                    h -= SEQUENCE
+                elif num-1 in neighbours:
+                    if debug:    
+                        print("HALF SEQUENCE +", HALF_SEQUENCE)
+                    h -= HALF_SEQUENCE
+
+        if self.blocked_neighbour(neighbours, num,row, col, board):
+              
+            print("BLOCKED_NEIGHBOUR +", BLOCKED_NEIGHBOUR)
+            h -= BLOCKED_NEIGHBOUR
+        
+        print("Heuristic for ", action, " is ", h)
+        node.state.h = h
+        return h
     
     # TODO: outros metodos da classe
 
@@ -706,8 +790,9 @@ if __name__ == "__main__":
     #debug
     problem = Numbrix(board)
 
+    #print(problem.board)
 
-    node: Node = depth_first_tree_search(problem)
+    node: Node = astar_search(problem)
     # Retirar a solução a partir do nó resultante,
     
     solution_board = node.state.board
