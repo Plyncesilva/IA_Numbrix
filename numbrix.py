@@ -2,11 +2,12 @@
 # Devem alterar as classes e funções neste ficheiro de acordo com as instruções do enunciado.
 # Além das funções e classes já definidas, podem acrescentar outras que considerem pertinentes.
 
-# Grupo 00:
-# 00000 Nome1
+# Grupo 84:
+# 95656 Pedro Lynce Silva
 # 00000 Nome2
 
 import sys
+from datetime import datetime
 
 from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_tree_search, greedy_search, recursive_best_first_search
 
@@ -29,6 +30,7 @@ class Board:
                 for col in range(self.size):
                     if board[row][col] != 0:
                         self.family += [board[row][col]]
+                        self.map[board[row][col]] = (row, col)
                         self.remaining.remove(board[row][col])
 
         
@@ -45,8 +47,8 @@ class Board:
         return res
 
     def set_number(self, row: int, col: int, num: int):
-        if self.board[row][col] == 0:
-            self.family += [num]
+        self.family += [num]
+        self.map[num] = (row, col)
         self.board[row][col] = num
         self.remaining.remove(num)
 
@@ -229,15 +231,22 @@ class Board:
     def manhattanDistance(self, pos1, pos2):
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
-    def possible_from_manhattan(self, row, col, num):
-        for i in range(self.size):
-            for j in range(self.size):
-                if self.get_number(i, j) != 0:
-                    if self.manhattanDistance((row, col), (i, j)) <= abs(self.get_number(i, j) - num):
-                        continue
-                    else:
-                        return False
-        return True
+    # check the closest only
+    def possible_from_manhattan(self, row, col, num, upper_goal: bool):
+        # looking for max below
+        if upper_goal:
+            target = self.get_max_below(num)
+
+        # looking for min above
+        else:
+            target = self.get_min_above(num)
+
+        if target == num:
+            return True
+
+        target_position = self.get_coordinates(target)
+
+        return self.manhattanDistance((row, col), (target_position[0], target_position[1])) <= abs(target - num)
 
     def all_neighbours_satisfied(self, row: int, col: int):
         return self.position_satisified(row-1, col, self.get_number(row-1, col)) \
@@ -255,20 +264,10 @@ class Board:
                         return False
         return True
 
-    def board_contains(self, row: int, col: int, num: int):
-        for i in range(self.size):
-            for j in range(self.size):
-                if self.get_number(i, j) == num:
-                    return True
-
-        return False
-
     def get_coordinates(self, num: int):
-        for row in range(self.size):
-            for col in range(self.size):
-                if self.board[row][col] == num:
-                    return (row, col)
-        return (-1, -1) 
+        if num in self.map:
+            return self.map[num]
+        return ()
 
     def get_max(self):
         return max(self.family)
@@ -477,77 +476,75 @@ class Numbrix(Problem):
                 actions.remove((row, col, action[2]))
         return actions
 
+    def get_jackpot_action(self, lower: tuple, upper: tuple, num: int, board: Board):
+        res = []
+        # COLUMN
+        if lower[1] == upper[1] and abs(lower[0] - upper[0]) == 2:
+            # empty position to put number
+            if board.get_number(min(lower[0], upper[0])+1, lower[1]) == 0:
+                res += [(min(lower[0], upper[0]) +1, lower[1], num)]
+        # ROW
+        elif lower[0] == upper[0] and abs(lower[1]-upper[1]) == 2:
+            # empty position to put number
+            if board.get_number(lower[0], min(lower[1], upper[1]) + 1) == 0:
+                res += [(lower[0], min(lower[1], upper[1]) + 1, num)]
+        # FORM A DIAGONAL
+        else:
+            if board.get_number(lower[0], upper[1]) != 0:
+                if board.get_number(upper[0], lower[1]) == 0:
+                    res += [(upper[0], lower[1], num)]
+            elif board.get_number(upper[0], lower[1]) != 0:
+                if board.get_number(lower[0], upper[1]) == 0:
+                    res += [(lower[0], upper[1], num)]
+            else:
+                # both positions are possible
+                res += [(lower[0], upper[1], num), (upper[0], lower[1], num)]
+
+        return res
+
     def actions(self, state: NumbrixState):
         actions = []
         board = state.get_board()
         size = board.get_size()
         EOL = [1, size**2]
-
+        
 
         for num in board.remaining:
-            # both goals exist
-            if board.number_exists(num-1) and board.number_exists(num+1): 
-                lower = board.get_coordinates(num-1)
-                upper = board.get_coordinates(num+1)
-                # same row
-                if lower[0] == upper[0] and abs(lower[1]-upper[1]) == 2:
-                    # empty position to put number
-                    if board.get_number(lower[0], min(lower[1], upper[1]) + 1) == 0:
-                        return [(lower[0], min(lower[1], upper[1]) + 1, num)]
-                    return []
-                # same column
-                elif lower[1] == upper[1] and abs(lower[0] - upper[0]) == 2:
-                    # empty position to put number
-                    if board.get_number(min(lower[0], upper[0])+1, lower[1]) == 0:
-                        return [(min(lower[0], upper[0]) +1, lower[1], num)]
-                    return []
-                # diagonals
-                else:
-                    d1 = (lower[0], upper[1])
-                    d2 = (upper[0], lower[1])
-                    # lower is above upper
-                    if board.get_number(d1[0], d1[1]) != 0:
-                        if board.get_number(d2[0], d2[1]) == 0:
-                            return [(d2[0], d2[1], num)]
-                        return []
-                    # upper is above lower
-                    elif board.get_number(d2[0], d2[1]) != 0:
-                        if board.get_number(d1[0], d1[1]) == 0:
-                            return [(d1[0], d1[1], num)]
-                        return []
-                    else:
-                        # check using manhattan distance and empty spots
-                        if board.get_number(d1[0], d1[1]) == 0 and board.possible_from_manhattan(d1[0], d1[1], num):
-                            actions += [(d1[0], d1[1], num)]
-                        if board.get_number(d2[0], d2[1]) == 0 and board.possible_from_manhattan(d2[0], d2[1], num):
-                            actions += [(d2[0], d2[1], num)]
-                        if actions != []:
-                            return actions
-                        return []
-            # only lower goal exists
-            elif board.number_exists(num-1):
-                lower = board.get_coordinates(num-1)
-                neighbours = board.get_neighbors(lower[0], lower[1])
-                positions = ((lower[0], lower[1]-1), (lower[0], lower[1]+1), (lower[0]+1, lower[1]), (lower[0]-1, lower[1]))
-            # only upper goal exists
-            elif board.number_exists(num+1):
-                upper = board.get_coordinates(num+1)
-                neighbours = board.get_neighbors(upper[0], upper[1])
-                positions = ((upper[0], upper[1]-1), (upper[0], upper[1]+1), (upper[0]+1, upper[1]), (upper[0]-1, upper[1]))
-            # no goals
-            elif not board.number_exists(num-1) and not board.number_exists(num+1):
-                continue
-            
-            for i in range(len(neighbours)):
-                if neighbours[i] == 0:
-                    updated_neighbours = board.get_neighbors(positions[i][0], positions[i][1])
 
-                    # check for space
-                    if updated_neighbours.count(0) > 0 or num == 1 or num == size**2:
-                        # check manhattan distance
-                        if board.get_number(positions[i][0], positions[i][1]) == 0 and board.possible_from_manhattan(positions[i][0], positions[i][1], num):
-                            actions += [(positions[i][0], positions[i][1], num)]
-            return actions
+            # num has NO GOALS on board
+            if not board.number_exists(num-1) and not board.number_exists(num+1):
+                continue
+            # num has BOTH GOALS on board (jackpot)
+            elif board.number_exists(num-1) and board.number_exists(num+1): 
+                lower = board.get_coordinates(num-1)
+                upper = board.get_coordinates(num+1)
+                return self.get_jackpot_action(lower, upper, num, board)
+
+            # only ONE GOAL EXISTS, upper or lower targets
+            else:
+                # only lower goal exists
+                if board.number_exists(num-1):
+                    upper_goal = False
+                    target = board.get_coordinates(num-1)
+                # only upper goal exists
+                else:
+                    upper_goal = True
+                    target = board.get_coordinates(num+1)
+                
+                #               left                            right                   down                    up
+                positions = ((target[0], target[1]-1), (target[0], target[1]+1), (target[0]+1, target[1]), (target[0]-1, target[1]))
+                neighbours = board.get_neighbors(target[0], target[1])
+                
+                for i in range(len(neighbours)):
+                    if neighbours[i] == 0:
+                        target_neighbours = board.get_neighbors(positions[i][0], positions[i][1])
+
+                        # check for space or END OF LINE
+                        if target_neighbours.count(0) >= 1 or num in EOL:
+                            # check manhattan distance to the closest successor/antecessor
+                            if board.possible_from_manhattan(positions[i][0], positions[i][1], num, upper_goal):
+                                actions += [(positions[i][0], positions[i][1], num)]
+                return actions
         return actions
 
     def result(self, state: NumbrixState, action):
@@ -699,6 +696,8 @@ def isValid(x, y, grid, visited, d):
     return False
 
 if __name__ == "__main__":
+    start_time = datetime.now()
+
     # Ler o ficheiro de input de sys.argv[1],
     board = Board.parse_instance(sys.argv[1])
     
@@ -712,6 +711,9 @@ if __name__ == "__main__":
     
     solution_board = node.state.board
     print(solution_board)
+
+    end_time = datetime.now()
+    print('Duration: {}'.format(end_time - start_time))
 
     # Retirar a solução a partir do nó resultante,
     
